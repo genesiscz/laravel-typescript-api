@@ -1,0 +1,79 @@
+{
+    "name": "genesiscz/laravel-typescript-api",
+    "description": "Generate a fully-typed TypeScript API client from your Laravel app — spatie/laravel-data DTOs, TanStack Query bindings (React & Angular), zod, enums and OpenAPI docs. Scramble under the hood, Orval and/or hey-api as engines, composable like typescript-transformer.",
+    "keywords": [
+        "laravel",
+        "typescript",
+        "openapi",
+        "codegen",
+        "spatie",
+        "laravel-data",
+        "scramble",
+        "tanstack-query",
+        "react-query",
+        "angular-query",
+        "orval",
+        "hey-api"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Martin Zavadil"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0",
+        "illuminate/support": "^11.0|^12.0",
+        "spatie/laravel-data": "^4.11",
+        "dedoc/scramble": "^0.12.20",
+        "pjadanowski/scramble-extras": "^0.2",
+        "spatie/laravel-package-tools": "^1.16",
+        "symfony/process": "^7.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "laravel/pint": "^1.14",
+        "phpstan/phpstan": "^2.0",
+        "spatie/typescript-transformer": "^2.2"
+    },
+    "suggest": {
+        "spatie/laravel-typescript-transformer": "Companion mode: authoritative enums.ts and non-API types (Inertia props, broadcasts)",
+        "dedoc/scramble-pro": "Official deep laravel-data support — drop-in replacement for scramble-extras"
+    },
+    "autoload": {
+        "psr-4": {
+            "Genesiscz\\LaravelTypescriptApi\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Genesiscz\\LaravelTypescriptApi\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Genesiscz\\LaravelTypescriptApi\\LaravelTypescriptApiServiceProvider"
+            ],
+            "aliases": {
+                "LaravelTypescriptApi": "Genesiscz\\LaravelTypescriptApi\\Facades\\LaravelTypescriptApi"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "lint": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
