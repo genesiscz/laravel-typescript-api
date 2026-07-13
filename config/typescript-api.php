@@ -9,7 +9,6 @@ use Genesiscz\LaravelTypescriptApi\Emit\PrefetchEmitter;
 use Genesiscz\LaravelTypescriptApi\Engines\HeyApiEngine;
 use Genesiscz\LaravelTypescriptApi\Engines\OrvalEngine;
 use Genesiscz\LaravelTypescriptApi\Format\BiomeFormatter;
-use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\EnumVarnamesExtension;
 use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\ResponseEnvelopeExtension;
 use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\TransformerAttributesExtension;
 
@@ -55,8 +54,14 @@ return [
             // Order matters. Class-string, or [class-string => options].
             'extensions' => [
                 TransformerAttributesExtension::class,
-                EnumVarnamesExtension::class,
                 ResponseEnvelopeExtension::class,
+            ],
+
+            // Merged into config('scramble') for the duration of a build.
+            // enum_cases_names_strategy 'varnames' → x-enum-varnames with PHP
+            // case names, which both engines turn into real named TS enums.
+            'config' => [
+                'enum_cases_names_strategy' => 'varnames',
             ],
         ],
 
@@ -78,6 +83,12 @@ return [
         'envelope' => [
             'unwrap' => null,           // e.g. 'data'
             'document_full' => true,    // keep full envelope in docs
+
+            // Where `- Response: Foo` docblock names are resolved.
+            'response_namespaces' => [
+                'App\\Http\\Responses\\',
+                'App\\Data\\',
+            ],
         ],
 
         // Write the artifact next to generated TS (CI contract diffing, docs)
@@ -105,9 +116,17 @@ return [
             'enabled' => true,
             'dir' => '',                // subdir under output.path ('' = root)
             'plugins' => [
-                '@hey-api/typescript',
+                '@hey-api/typescript' => [
+                    // real named TS enums from x-enum-varnames (PHP case names)
+                    'enums' => ['mode' => 'typescript', 'case' => 'preserve'],
+                ],
                 '@hey-api/sdk',
-                '@tanstack/react-query',
+                '@tanstack/react-query' => [
+                    // queryOptions AND named hooks — both styles served
+                    'useQuery' => true,
+                    'useMutation' => true,
+                    'infiniteQueryOptions' => true,
+                ],
                 // 'zod',
                 // ['name' => '@hey-api/transformers', 'dates' => true],
                 // '@tanstack/angular-query-experimental',
@@ -141,12 +160,17 @@ return [
     | wrapping hey-api queryOptions, prefetch/ensure helpers, real TS enums.
     */
     'emit' => [
+        // hey-api's @tanstack/react-query plugin emits named hooks natively
+        // (useQuery/useMutation flags above) — this emitter exists for
+        // engines/situations without native hook emission.
         HooksEmitter::class => [
-            'enabled' => true,          // useListInvoices() atop queryOptions
+            'enabled' => false,
         ],
+        // prefetchX()/ensureXData() SSR helpers (7nohe pattern) — planned as
+        // a hey-api custom plugin so symbol names always match the SDK.
         PrefetchEmitter::class => [
-            'enabled' => true,          // prefetchListInvoices(queryClient, …)
-            'ensure' => true,           // ensureListInvoicesData(queryClient, …)
+            'enabled' => false,
+            'ensure' => true,
         ],
         EnumsEmitter::class => [
             'enabled' => true,
@@ -154,7 +178,7 @@ return [
             'file' => 'enums.ts',
         ],
         IndexEmitter::class => [
-            'enabled' => true,          // barrel exports
+            'enabled' => true,          // barrel exports (adds ./enums etc.)
         ],
     ],
 
@@ -176,8 +200,15 @@ return [
     |--------------------------------------------------------------------------
     */
     'runner' => [
-        'bun' => env('TYPESCRIPT_API_BUN', 'bunx'),
-        'cwd' => null,                  // where bunx runs; null = base_path()
+        'bun' => env('TYPESCRIPT_API_BUN', 'bun'),
+
+        // Package-managed bun workspace holding the TS tooling (so peer
+        // dependencies like typescript for hey-api actually resolve).
+        'workspace' => null,            // null = storage_path('typescript-api')
+
+        // Pin/override tool versions, e.g. ['@hey-api/openapi-ts' => '0.99.0']
+        'dependencies' => [],
+
         'timeout' => 300,
         'env' => [],
     ],

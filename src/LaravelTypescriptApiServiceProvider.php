@@ -26,6 +26,20 @@ class LaravelTypescriptApiServiceProvider extends PackageServiceProvider
     public function packageRegistered(): void
     {
         $this->app->singleton(LaravelTypescriptApiManager::class);
+
+        $this->app->bind(
+            \Genesiscz\LaravelTypescriptApi\Support\BunRunner::class,
+            fn () => \Genesiscz\LaravelTypescriptApi\Support\BunRunner::fromConfig(config('typescript-api.runner', [])),
+        );
+
+        // Must happen in the register phase: scramble snapshots OPERATION
+        // extensions from Scramble::$extensions at its own boot (the
+        // withOperationTransformers mapper runs immediately), so a
+        // generate-time registerExtension() is too late for them —
+        // TypeToSchema extensions resolve lazily and wouldn't care.
+        \Dedoc\Scramble\Scramble::registerExtensions(
+            config('typescript-api.openapi.scramble.extensions', []),
+        );
     }
 
     public function packageBooted(): void

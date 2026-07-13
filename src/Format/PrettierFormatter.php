@@ -11,6 +11,10 @@ class PrettierFormatter implements Formatter
 
     public function format(string $path, array $options): void
     {
-        $this->runner->run('prettier', ['--write', $path.'/**/*.ts', ...($options['args'] ?? [])]);
+        $this->runner->run(
+            ['prettier' => '^3'],
+            'prettier',
+            ['--write', $path.'/**/*.ts', ...($options['args'] ?? [])],
+        );
     }
 }

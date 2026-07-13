@@ -11,6 +11,10 @@ class BiomeFormatter implements Formatter
 
     public function format(string $path, array $options): void
     {
-        $this->runner->run('@biomejs/biome', ['format', '--write', $path, ...($options['args'] ?? [])]);
+        $this->runner->run(
+            ['@biomejs/biome' => '^2'],
+            'biome',
+            ['format', '--write', $path, ...($options['args'] ?? [])],
+        );
     }
 }

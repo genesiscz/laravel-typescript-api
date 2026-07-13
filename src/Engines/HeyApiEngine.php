@@ -26,7 +26,11 @@ class HeyApiEngine implements Engine
         $configPath = $this->writeConfig($context, $options, $outputDir);
 
         try {
-            $context->runner->run('@hey-api/openapi-ts', ['-f', $configPath]);
+            $context->runner->run(
+                ['@hey-api/openapi-ts' => '^0.99', 'typescript' => '^5.5'],
+                'openapi-ts',
+                ['-f', $configPath],
+            );
         } finally {
             File::delete($configPath);
         }

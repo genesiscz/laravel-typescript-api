@@ -25,7 +25,11 @@ class OrvalEngine implements Engine
         $configPath = $this->writeConfig($context, $options, $outputDir);
 
         try {
-            $context->runner->run('orval', ['--config', $configPath]);
+            $context->runner->run(
+                ['orval' => '^7'],
+                'orval',
+                ['--config', $configPath],
+            );
         } finally {
             File::delete($configPath);
         }

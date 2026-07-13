@@ -53,6 +53,12 @@ class OpenApiBuilder
     {
         $this->registerExtensions($scrambleConfig['extensions'] ?? []);
 
+        // Scramble config overrides for the duration of the build
+        // (e.g. enum_cases_names_strategy => 'varnames').
+        foreach ($scrambleConfig['config'] ?? [] as $key => $value) {
+            config(["scramble.{$key}" => $value]);
+        }
+
         $api = $scrambleConfig['api'] ?? 'default';
 
         // Scramble 0.12: generate the document for the given API registration.
