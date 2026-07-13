@@ -41,6 +41,14 @@ class GenerateCommand extends Command
         $this->components->twoColumnDetail('Output', $context->outputPath);
         $this->components->twoColumnDetail('Files written', (string) count($context->written));
 
+        if ($context->errors !== []) {
+            $this->components->warn(count($context->errors).' route(s) could not be analyzed — their schemas may be incomplete:');
+
+            foreach (array_slice($context->errors, 0, 10) as $error) {
+                $this->components->bulletList([str($error)->limit(160)->toString()]);
+            }
+        }
+
         return self::SUCCESS;
     }
 }

@@ -2,38 +2,35 @@
 
 namespace Genesiscz\LaravelTypescriptApi\Scramble\Extensions;
 
-use Dedoc\Scramble\Extensions\TypeToSchemaExtension;
 use Dedoc\Scramble\Support\Generator\Types\Type as OpenApiType;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
+use Genesiscz\LaravelTypescriptApi\Scramble\TransformerAwareReflector;
+use PawelJadanowski\ScrambleExtras\LaravelDataReflector;
+use PawelJadanowski\ScrambleExtras\LaravelDataTypeToSchemaExtension;
 
 /**
- * Honors Spatie typescript-transformer attributes on laravel-data classes
- * inside the OpenAPI pipeline, so a codebase annotated for
- * typescript-transformer (à la ReservineBack) describes itself identically
- * through Scramble:
+ * scramble-extras' Data extension, hardened:
  *
- *   #[TypeScriptType(Foo::class.'[]')]     → overrides the property schema
- *   #[LiteralTypeScriptType('Record<...>')]→ mapped literal (best effort)
- *   #[Optional] (spatie/typescript-transformer) → property not required
+ * 1. FORCES the reflector to run. Scramble core sees a Data class as an
+ *    opaque Arrayable and emits an EMPTY object schema first; extras then
+ *    defers to that "previous result" and the empty schema wins (observed on
+ *    ReservineBack: 140/184 Data schemas empty). Registered after extras,
+ *    this extension ignores the previous result and rebuilds.
  *
- * TODO(scaffold): implement — read attribute reflection off the Data class
- * properties and rewrite the produced schema (shouldHandle: ObjectType
- * subclassing Spatie\LaravelData\Data with any of the attributes present).
+ * 2. Uses TransformerAwareReflector, honoring spatie/typescript-transformer
+ *    attributes (#[Optional] → not required).
  */
-class TransformerAttributesExtension extends TypeToSchemaExtension
+class TransformerAttributesExtension extends LaravelDataTypeToSchemaExtension
 {
-    public function shouldHandle(Type $type): bool
-    {
-        // TODO(scaffold): ObjectType + Data subclass + transformer attributes present.
-        return false;
-    }
-
-    public function toSchema(Type $type): ?OpenApiType
+    public function toSchema(Type $type, ?OpenApiType $previousExtensionResult = null): OpenApiType
     {
         /** @var ObjectType $type */
-        // TODO(scaffold): delegate to the default/extras schema, then patch
-        // per-property overrides from the attributes.
-        return null;
+        return $this->reflector()->buildSchema($type->name, input: false);
+    }
+
+    protected function reflector(): LaravelDataReflector
+    {
+        return new TransformerAwareReflector($this->openApiTransformer, $this->components);
     }
 }

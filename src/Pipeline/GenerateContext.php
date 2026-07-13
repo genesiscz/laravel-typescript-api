@@ -21,6 +21,9 @@ class GenerateContext
     /** @var list<string> files written this run (manifest / clean policy) */
     public array $written = [];
 
+    /** @var list<string> per-route analysis errors surfaced by the OpenAPI stage */
+    public array $errors = [];
+
     public function __construct(
         public readonly array $config,
         public readonly string $outputPath,

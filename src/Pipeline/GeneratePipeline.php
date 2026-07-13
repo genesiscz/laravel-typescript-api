@@ -71,6 +71,7 @@ class GeneratePipeline
         }
 
         $context->openapi = $this->openApiBuilder->build($context->config['openapi'] ?? [], $extraSchemas);
+        $context->errors = $this->openApiBuilder->errors;
 
         if ($context->config['openapi']['artifact']['write'] ?? true) {
             $path = $context->config['openapi']['artifact']['path']

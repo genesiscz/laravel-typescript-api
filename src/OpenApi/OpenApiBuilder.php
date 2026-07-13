@@ -46,6 +46,9 @@ class OpenApiBuilder
         return json_decode(File::get($path), true, flags: JSON_THROW_ON_ERROR);
     }
 
+    /** @var list<string> analysis errors collected during the last build */
+    public array $errors = [];
+
     protected function fromScramble(array $scrambleConfig): array
     {
         $this->registerExtensions($scrambleConfig['extensions'] ?? []);
@@ -53,8 +56,17 @@ class OpenApiBuilder
         $api = $scrambleConfig['api'] ?? 'default';
 
         // Scramble 0.12: generate the document for the given API registration.
-        $generator = app(Generator::class);
+        // Collect per-route analysis exceptions instead of aborting — one
+        // unanalyzable route must not kill the whole artifact — but SURFACE
+        // them: every swallowed exception leaves a broken string-placeholder
+        // schema ("Reference is being analyzed") behind.
+        $generator = app(Generator::class)->setThrowExceptions(false);
         $document = $generator(Scramble::getGeneratorConfig($api));
+
+        $this->errors = array_map(
+            fn (\Throwable $e) => $e->getMessage(),
+            $generator->exceptions,
+        );
 
         return is_array($document) ? $document : $document->toArray();
     }

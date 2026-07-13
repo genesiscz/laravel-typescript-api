@@ -22,15 +22,19 @@ class SchemaAppender
         foreach ($classes as $class) {
             $name = $this->schemaName($class);
 
-            if (isset($document['components']['schemas'][$name])) {
-                continue; // already referenced by an endpoint
+            // Scramble names schemas by (deduped) class basename — treat a
+            // basename hit as "already documented" too, or every referenced
+            // DTO would get a second, placeholder copy under its FQCN name.
+            if (isset($document['components']['schemas'][$name])
+                || isset($document['components']['schemas'][class_basename($class)])) {
+                continue;
             }
 
-            // TODO(scaffold): $schema = $this->typeTransformer->transform($class);
-            $document['components']['schemas'][$name] = [
-                'type' => 'object',
-                'description' => "TODO: schema for {$class} (collector-appended)",
-            ];
+            // TODO(scaffold): build the real schema via extras' reflector +
+            // the document's TypeTransformer. Until then SKIP — an empty
+            // placeholder schema would flow into the engines and produce
+            // garbage TS types for every unreferenced DTO.
+            continue;
         }
 
         return $document;
