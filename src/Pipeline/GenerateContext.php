@@ -30,9 +30,11 @@ class GenerateContext
         public readonly BunRunner $runner,
     ) {}
 
-    public function enginePath(Engine $engine): string
+    public function enginePath(Engine $engine, ?array $options = null): string
     {
-        $dir = $this->config['engines'][$engine::class]['dir'] ?? $engine->name();
+        $dir = $options['dir']
+            ?? $this->config['engines'][$engine::class]['dir']
+            ?? $engine->name();
 
         return $dir === ''
             ? $this->outputPath

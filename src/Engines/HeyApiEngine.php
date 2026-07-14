@@ -20,7 +20,7 @@ class HeyApiEngine implements Engine
 
     public function generate(GenerateContext $context, array $options): void
     {
-        $outputDir = $context->enginePath($this);
+        $outputDir = $context->enginePath($this, $options);
         File::ensureDirectoryExists($outputDir);
 
         $configPath = $this->writeConfig($context, $options, $outputDir);

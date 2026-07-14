@@ -88,11 +88,21 @@ class GeneratePipeline
         }
     }
 
-    /** Stage 3: run every enabled engine against the artifact. */
+    /**
+     * Stage 3: run every enabled engine against the artifact.
+     *
+     * Entries are `Class::class => [options]`, or — when the same engine
+     * should run more than once (hey-api react AND angular, each into its
+     * own dir) — list items of the form `['engine' => Class::class, ...]`.
+     */
     public function engines(GenerateContext $context): void
     {
         foreach ($context->config['engines'] ?? [] as $class => $options) {
-            [$class, $options] = $this->normalizeEntry($class, $options);
+            if (is_int($class) && is_array($options) && isset($options['engine'])) {
+                $class = $options['engine'];
+            } else {
+                [$class, $options] = $this->normalizeEntry($class, $options);
+            }
 
             if (($options['enabled'] ?? false) !== true) {
                 continue;
