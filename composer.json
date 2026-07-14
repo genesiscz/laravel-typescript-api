@@ -42,7 +42,7 @@
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-phpunit": "^2.0",
-        "spatie/typescript-transformer": "^2.2"
+        "spatie/typescript-transformer": "^3.3"
     },
     "suggest": {
         "spatie/laravel-typescript-transformer": "Companion mode: authoritative enums.ts and non-API types (Inertia props, broadcasts)",
