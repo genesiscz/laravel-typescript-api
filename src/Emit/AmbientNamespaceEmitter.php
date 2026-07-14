@@ -37,6 +37,13 @@ use Illuminate\Support\Facades\File;
  *  - fallback_namespace: dotted namespace for schemas with no PHP match
  *    (default 'App'); set false to skip unmatched schemas entirely
  *  - declaration: 'type' | 'interface' (default 'type')
+ *  - enum_import: module specifier (e.g. './enums') — enum references render
+ *    as import('./enums').X (the RUNTIME enum emitted by EnumsEmitter)
+ *    instead of the ambient const enum, so frontend comparisons against
+ *    imported enum values type-check (enums are nominal in TS). Default null.
+ *  - exclude_namespaces: dotted prefixes to skip in the output while keeping
+ *    references to them fully qualified — for namespaces another generator
+ *    owns (e.g. ['App.Models'] when models.d.ts is generated separately).
  */
 class AmbientNamespaceEmitter implements Emitter
 {
@@ -48,6 +55,12 @@ class AmbientNamespaceEmitter implements Emitter
 
     /** @var array<string, array<string, true>> namespace => direct member names (types + child namespaces) */
     protected array $members = [];
+
+    /** @var array<string, true> schema names that are enums */
+    protected array $enumSchemas = [];
+
+    /** Module specifier for enum references (e.g. './enums'), or null. */
+    protected ?string $enumImport = null;
 
     public function emit(GenerateContext $context, array $options): void
     {
@@ -61,7 +74,7 @@ class AmbientNamespaceEmitter implements Emitter
         // normalize the whole subtree to arrays before walking it.
         $schemas = json_decode(json_encode($schemas), true);
 
-        $index = PhpClassIndex::build(
+        $index = PhpClassIndex::buildAll(
             $options['namespaces'] ?? ['App\\'],
             array_keys($schemas),
         );
@@ -76,8 +89,14 @@ class AmbientNamespaceEmitter implements Emitter
                 // with dotted names (App.Data.Branch.BranchData).
                 $namespace = substr($name, 0, strrpos($name, '.'));
                 $member = substr($name, strrpos($name, '.') + 1);
-            } elseif (($fqcn = $index[$name] ?? null) !== null) {
+            } elseif (($fqcn = $this->pickCandidate($index[$name] ?? [], $schemas)) !== null) {
                 $namespace = str_replace('\\', '.', substr($fqcn, 0, strrpos($fqcn, '\\')));
+                $member = $name;
+            } elseif (($parent = $this->longestPrefixCandidate($name, $index, $schemas)) !== null) {
+                // Scramble-synthesized child type (OpeningHoursDataDay from
+                // OpeningHoursData) — sits next to its parent class, exactly
+                // where typescript-transformer put it.
+                $namespace = str_replace('\\', '.', substr($parent, 0, strrpos($parent, '\\')));
                 $member = $name;
             } elseif (($options['fallback_namespace'] ?? 'App') === false) {
                 continue;
@@ -103,7 +122,16 @@ class AmbientNamespaceEmitter implements Emitter
             }
         }
 
+        $this->enumImport = $options['enum_import'] ?? null;
+
+        foreach ($schemas as $name => $schema) {
+            if (is_array($schema) && isset($schema['enum'])) {
+                $this->enumSchemas[$name] = true;
+            }
+        }
+
         $declaration = $options['declaration'] ?? 'type';
+        $excluded = $options['exclude_namespaces'] ?? [];
         $blocks = [];
 
         foreach ($schemas as $name => $schema) {
@@ -112,6 +140,15 @@ class AmbientNamespaceEmitter implements Emitter
             }
 
             [$namespace, $member] = $placement[$name];
+
+            // Excluded namespaces stay OUT of the output (another generator
+            // owns them — e.g. App.Models via models.d.ts) but references
+            // to them remain fully qualified against that other file.
+            foreach ($excluded as $prefix) {
+                if ($namespace === $prefix || str_starts_with($namespace, $prefix.'.')) {
+                    continue 2;
+                }
+            }
 
             $blocks[$namespace][$member] = is_array($schema) && isset($schema['enum'])
                 ? $this->renderConstEnum($member, $schema)
@@ -133,6 +170,57 @@ class AmbientNamespaceEmitter implements Emitter
         $path = rtrim($dir, '/').'/'.($options['file'] ?? 'app.d.ts');
         File::put($path, $out);
         $context->trackFile($path);
+    }
+
+    /**
+     * A plain schema name is ambiguous when several classes share the
+     * basename. Scramble gives dotted names to all but ONE of the colliding
+     * classes — so the right candidate is the one whose own dotted form is
+     * NOT already a schema.
+     *
+     * @param  list<class-string>  $candidates
+     * @param  array<string, mixed>  $schemas
+     * @return class-string|null
+     */
+    protected function pickCandidate(array $candidates, array $schemas): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if (! isset($schemas[str_replace('\\', '.', $candidate)])) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0] ?? null;
+    }
+
+    /**
+     * The class whose basename is the LONGEST strict prefix of $name —
+     * parent of a scramble-synthesized child schema name.
+     *
+     * @param  array<string, non-empty-list<class-string>>  $index
+     * @param  array<string, mixed>  $schemas
+     * @return class-string|null
+     */
+    protected function longestPrefixCandidate(string $name, array $index, array $schemas): ?string
+    {
+        $best = null;
+
+        foreach ($index as $basename => $candidates) {
+            // Synthesized children only spawn from Data parents — without
+            // this constraint App\Models\Employee would capture
+            // EmployeeMatchData.
+            if ($basename === $name
+                || ! str_starts_with($name, $basename)
+                || ! is_a($candidates[0], \Spatie\LaravelData\Contracts\BaseData::class, true)) {
+                continue;
+            }
+
+            if ($best === null || strlen($basename) > strlen($best)) {
+                $best = $basename;
+            }
+        }
+
+        return $best === null ? null : $this->pickCandidate($index[$best], $schemas);
     }
 
     protected function renderType(string $name, array|bool $schema, string $namespace, string $declaration): string
@@ -220,6 +308,15 @@ class AmbientNamespaceEmitter implements Emitter
 
         if (isset($schema['$ref'])) {
             $name = basename($schema['$ref']);
+
+            // Enum references can point at the RUNTIME enum module
+            // (enums.ts) instead of the ambient const enum — property types
+            // then nominally match values the frontend imports, so
+            // `data.status === Status.Confirmed` comparisons type-check.
+            if ($this->enumImport !== null && isset($this->enumSchemas[$name]) && ! str_contains($name, '.')) {
+                return "import('{$this->enumImport}').{$name}";
+            }
+
             $target = $this->qualified[$name] ?? null;
 
             return $target === null ? $name : $this->reference($target, $namespace);

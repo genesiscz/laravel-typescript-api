@@ -17,11 +17,30 @@ use Symfony\Component\Finder\Finder;
 class PhpClassIndex
 {
     /**
+     * basename => first matching FQCN.
+     *
      * @param  list<string>  $namespaces
      * @param  list<string>|null  $onlyBasenames  restrict autoload+verify to these names
      * @return array<string, class-string>
      */
     public static function build(array $namespaces, ?array $onlyBasenames = null): array
+    {
+        return array_map(
+            fn (array $candidates) => $candidates[0],
+            static::buildAll($namespaces, $onlyBasenames),
+        );
+    }
+
+    /**
+     * basename => EVERY matching FQCN (namespace order = priority order).
+     * Needed when a basename is ambiguous and the caller has extra context
+     * to pick the right candidate.
+     *
+     * @param  list<string>  $namespaces
+     * @param  list<string>|null  $onlyBasenames  restrict autoload+verify to these names
+     * @return array<string, non-empty-list<class-string>>
+     */
+    public static function buildAll(array $namespaces, ?array $onlyBasenames = null): array
     {
         $wanted = $onlyBasenames === null ? null : array_flip($onlyBasenames);
         $index = [];
@@ -34,21 +53,21 @@ class PhpClassIndex
                 continue;
             }
 
-            foreach (Finder::create()->files()->in($path)->name('*.php') as $file) {
+            foreach (Finder::create()->files()->in($path)->name('*.php')->sortByName() as $file) {
                 $basename = $file->getFilenameWithoutExtension();
 
                 if ($wanted !== null && ! isset($wanted[$basename])) {
                     continue;
                 }
 
-                if (isset($index[$basename])) {
+                $class = $namespace.'\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
+
+                if (in_array($class, $index[$basename] ?? [], true)) {
                     continue;
                 }
 
-                $class = $namespace.'\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
-
                 if (class_exists($class) || enum_exists($class)) {
-                    $index[$basename] = $class;
+                    $index[$basename][] = $class;
                 }
             }
         }
