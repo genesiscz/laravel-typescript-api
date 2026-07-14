@@ -2,9 +2,10 @@
 
 namespace Genesiscz\LaravelTypescriptApi\Scramble;
 
-use Dedoc\Scramble\Support\Generator\Combined\AnyOf;
-use Dedoc\Scramble\Support\Generator\Types\ObjectType as OpenApiObjectType;
 use Dedoc\Scramble\Infer\Services\FileNameResolver;
+use Dedoc\Scramble\Support\Generator\Combined\AnyOf;
+use Dedoc\Scramble\Support\Generator\Types\MixedType;
+use Dedoc\Scramble\Support\Generator\Types\ObjectType as OpenApiObjectType;
 use Dedoc\Scramble\Support\Generator\Types\Type as OpenApiType;
 use PawelJadanowski\ScrambleExtras\LaravelDataReflector;
 use PawelJadanowski\ScrambleExtras\SchemaCache;
@@ -71,7 +72,7 @@ class TransformerAwareReflector extends LaravelDataReflector
 
             $type = $raw === 'object'
                 ? new OpenApiObjectType
-                : new \Dedoc\Scramble\Support\Generator\Types\MixedType;
+                : new MixedType;
 
             $type->setExtensionProperty('typescript-type', $raw);
 
@@ -127,7 +128,7 @@ class TransformerAwareReflector extends LaravelDataReflector
     protected function degradeUnhandledClass(OpenApiType $resolved): OpenApiType
     {
         if ($resolved instanceof OpenApiObjectType && $resolved->properties === []) {
-            return new \Dedoc\Scramble\Support\Generator\Types\MixedType;
+            return new MixedType;
         }
 
         return $resolved;

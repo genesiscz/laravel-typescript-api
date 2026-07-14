@@ -6,6 +6,7 @@ use Genesiscz\LaravelTypescriptApi\Contracts\Emitter;
 use Genesiscz\LaravelTypescriptApi\Pipeline\GenerateContext;
 use Genesiscz\LaravelTypescriptApi\Support\PhpClassIndex;
 use Illuminate\Support\Facades\File;
+use Spatie\LaravelData\Contracts\BaseData;
 
 /**
  * spatie/typescript-transformer-style ambient declarations (app.d.ts):
@@ -211,7 +212,7 @@ class AmbientNamespaceEmitter implements Emitter
             // EmployeeMatchData.
             if ($basename === $name
                 || ! str_starts_with($name, $basename)
-                || ! is_a($candidates[0], \Spatie\LaravelData\Contracts\BaseData::class, true)) {
+                || ! is_a($candidates[0], BaseData::class, true)) {
                 continue;
             }
 

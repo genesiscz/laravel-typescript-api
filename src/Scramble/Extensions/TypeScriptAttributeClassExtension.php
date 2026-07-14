@@ -4,10 +4,12 @@ namespace Genesiscz\LaravelTypescriptApi\Scramble\Extensions;
 
 use Dedoc\Scramble\Extensions\TypeToSchemaExtension;
 use Dedoc\Scramble\Support\Generator\ClassBasedReference;
+use Dedoc\Scramble\Support\Generator\Combined\AnyOf;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Types as OpenApi;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
+use Genesiscz\LaravelTypescriptApi\Scramble\ClassTypeMap;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionProperty;
@@ -107,7 +109,7 @@ class TypeScriptAttributeClassExtension extends TypeToSchemaExtension
         $resolved = match (count($types)) {
             0 => new OpenApi\UnknownType,
             1 => $types[0],
-            default => tap(new \Dedoc\Scramble\Support\Generator\Combined\AnyOf, function ($anyOf) use ($types) {
+            default => tap(new AnyOf, function ($anyOf) use ($types) {
                 $anyOf->items = $types;
             }),
         };
@@ -121,7 +123,7 @@ class TypeScriptAttributeClassExtension extends TypeToSchemaExtension
 
     protected function namedType(ReflectionNamedType $type): OpenApi\Type
     {
-        if (($mapped = \Genesiscz\LaravelTypescriptApi\Scramble\ClassTypeMap::resolve($type->getName())) !== null) {
+        if (($mapped = ClassTypeMap::resolve($type->getName())) !== null) {
             return $mapped;
         }
 
