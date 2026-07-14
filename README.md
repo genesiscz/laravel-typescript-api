@@ -180,16 +180,36 @@ Native PHP enums and bensampo/laravel-enum both supported. Styles: `enum`, `cons
 
 ## Migrating from spatie/laravel-typescript-transformer
 
-Already generating types with typescript-transformer (attributes like `#[TypeScriptType]`, `#[LiteralTypeScriptType]`, `#[Optional]` everywhere)? Those attributes are honored inside the OpenAPI pipeline — your annotations keep working, and now they type a whole client, not just interfaces. Keep typescript-transformer alongside for non-HTTP types (Inertia props, broadcast payloads); this package deliberately never wires its output into client signatures — one source of truth, no drift.
+Already generating types with typescript-transformer (attributes like `#[TypeScriptType]`, `#[LiteralTypeScriptType]`, `#[Optional]` everywhere)? Those attributes are honored inside the OpenAPI pipeline — your annotations keep working, and now they type a whole client, not just interfaces.
+
+The `AmbientNamespaceEmitter` makes the migration a drop-in: it writes a typescript-transformer-style `app.d.ts` (`declare namespace App.Data { … }` — frontends keep using `App.Data.X` globally, zero imports) plus the matching runtime `enums.ts`, from the same OpenAPI document the engines consume. The pieces that make it 1:1 in practice:
+
+```php
+AmbientNamespaceEmitter::class => [
+    'enabled' => true,
+    'path' => resource_path('types'),      // overwrite the old output in place
+    'enum_import' => './enums',            // props type against the RUNTIME enums
+    'exclude_namespaces' => ['App.Models'],// keep models.d.ts as its own generator
+],
+```
+
+- `#[TypeScript]`-attributed plain classes export too (`TypeScriptAttributeCollector`) — notification payloads, service DTOs.
+- `bensampo/laravel-enum` class enums come out as real TS enums.
+- `class_type_map` replaces custom transformers (`Money::class => 'number'`, `ArrayObject::class => 'Record<string, unknown>'`).
+- `input_namespaces` builds request DTOs as input schemas (`#[Hidden]` props the frontend sends still appear).
+- References survive namespace shadowing (`App\Http\Requests\App` …) via shortest-unambiguous-suffix emission.
+
+Verified against a 285-route production app: dropped into an Angular nx monorepo that consumed the old typescript-transformer output, the generated pair took the app's typecheck from 414 errors (naive generation) to 8 — all 8 being backend/frontend branch skew or frontend code that only compiled because the old types said `any`.
 
 ## Roadmap
 
-- [ ] Scramble extensions: transformer-attributes, enum varnames, envelope (skeletons shipped, inference WIP)
-- [ ] Collector-appended schemas via Scramble's TypeTransformer
-- [ ] Emitters: hooks / prefetch / ensure / enums / barrels
+- [x] Scramble extensions: transformer-attributes, enum varnames, envelope, bensampo enums, `#[TypeScript]` classes
+- [x] Collector-appended schemas via Scramble's TypeTransformer (document transformer)
+- [x] Emitters: enums / barrels / ambient app.d.ts (typescript-transformer drop-in)
+- [ ] Emitters: prefetch / ensure helpers as a hey-api plugin
 - [ ] `--watch` mode
 - [ ] Multipart uploads + polymorphic Data (upstreaming to scramble-extras where it belongs)
-- [ ] Reference integration: ReservineBack parity suite
+- [x] Reference integration: ReservineBack end-to-end (react + angular tanstack + orval, `tsc --strict` clean)
 
 ## Credits
 
