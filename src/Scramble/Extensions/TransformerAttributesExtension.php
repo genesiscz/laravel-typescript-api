@@ -26,7 +26,22 @@ class TransformerAttributesExtension extends LaravelDataTypeToSchemaExtension
     public function toSchema(Type $type, ?OpenApiType $previousExtensionResult = null): OpenApiType
     {
         /** @var ObjectType $type */
-        return $this->reflector()->buildSchema($type->name, input: false);
+        return $this->reflector()->buildSchema($type->name, input: $this->isInput($type->name));
+    }
+
+    /**
+     * Request DTOs are INPUT types: #[Hidden] (never serialized OUT) must
+     * still appear — the frontend sends it. Namespace-based, configurable.
+     */
+    protected function isInput(string $class): bool
+    {
+        foreach (config('typescript-api.openapi.scramble.input_namespaces', ['App\\Http\\Requests\\']) as $namespace) {
+            if (str_starts_with(ltrim($class, '\\'), trim($namespace, '\\').'\\')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function reflector(): LaravelDataReflector

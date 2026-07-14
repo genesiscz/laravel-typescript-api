@@ -10,6 +10,7 @@ use Genesiscz\LaravelTypescriptApi\Emit\PrefetchEmitter;
 use Genesiscz\LaravelTypescriptApi\Engines\HeyApiEngine;
 use Genesiscz\LaravelTypescriptApi\Engines\OrvalEngine;
 use Genesiscz\LaravelTypescriptApi\Format\BiomeFormatter;
+use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\BenSampoEnumExtension;
 use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\ResponseEnvelopeExtension;
 use Genesiscz\LaravelTypescriptApi\Scramble\Extensions\TransformerAttributesExtension;
 
@@ -56,6 +57,7 @@ return [
             'extensions' => [
                 TransformerAttributesExtension::class,
                 ResponseEnvelopeExtension::class,
+                BenSampoEnumExtension::class,
             ],
 
             // Merged into config('scramble') for the duration of a build.
@@ -63,6 +65,22 @@ return [
             // case names, which both engines turn into real named TS enums.
             'config' => [
                 'enum_cases_names_strategy' => 'varnames',
+            ],
+
+            // Data classes under these namespaces build as INPUT schemas:
+            // #[Hidden] props (never serialized out) still appear — the
+            // frontend SENDS them; #[Computed] props are dropped.
+            'input_namespaces' => [
+                'App\\Http\\Requests\\',
+            ],
+
+            // PHP class => TS type for value objects that serialize to
+            // scalars/shapes (typescript-transformer's "transformers").
+            // Keywords (number/string/...) map to real schema types; any
+            // other string is emitted verbatim in the ambient app.d.ts.
+            'class_type_map' => [
+                // \Brick\Money\Money::class => 'number',
+                // \Illuminate\Database\Eloquent\Casts\ArrayObject::class => 'Record<string, unknown>',
             ],
         ],
 
@@ -76,6 +94,11 @@ return [
                 // Skip abstract classes / traits automatically; add your own:
                 'except' => [],
             ],
+            // Classes anywhere that opt in with #[TypeScript] — same
+            // convention spatie/typescript-transformer used.
+            // \Genesiscz\LaravelTypescriptApi\Collectors\TypeScriptAttributeCollector::class => [
+            //     'namespaces' => ['App\\'],
+            // ],
         ],
 
         // Unwrap a response envelope so client types match what callers see
@@ -192,6 +215,12 @@ return [
             'namespaces' => ['App\\'],  // PHP roots resolved via PSR-4 file scan
             'fallback_namespace' => 'App', // unmatched schemas; false = skip
             'declaration' => 'type',    // 'type' | 'interface'
+            // './enums' => enum refs render as import('./enums').X (the
+            // runtime enum from EnumsEmitter) so frontend value comparisons
+            // type-check; null = reference the ambient const enums.
+            'enum_import' => null,
+            // Namespaces another generator owns (refs stay qualified):
+            'exclude_namespaces' => [],  // e.g. ['App.Models'] with models.d.ts
         ],
         IndexEmitter::class => [
             'enabled' => true,          // barrel exports (adds ./enums etc.)
