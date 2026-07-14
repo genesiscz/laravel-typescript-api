@@ -2,6 +2,7 @@
 
 use Genesiscz\LaravelTypescriptApi\Collectors\DataNamespaceCollector;
 use Genesiscz\LaravelTypescriptApi\Docs\PreviewEngine;
+use Genesiscz\LaravelTypescriptApi\Emit\AmbientNamespaceEmitter;
 use Genesiscz\LaravelTypescriptApi\Emit\EnumsEmitter;
 use Genesiscz\LaravelTypescriptApi\Emit\HooksEmitter;
 use Genesiscz\LaravelTypescriptApi\Emit\IndexEmitter;
@@ -176,6 +177,21 @@ return [
             'enabled' => true,
             'style' => 'enum',          // 'enum' | 'const' | 'union'
             'file' => 'enums.ts',
+            'path' => null,             // output DIRECTORY; null = output.path
+        ],
+        // typescript-transformer-style ambient app.d.ts — schemas placed
+        // back into their PHP namespaces (`declare namespace App.Data`),
+        // enums as `export const enum` in App.Enums, refs fully qualified.
+        // Drop-in replacement for a spatie/typescript-transformer app.d.ts:
+        // point `path` at resource_path('types') and frontends keep using
+        // App.Data.X globally, no imports.
+        AmbientNamespaceEmitter::class => [
+            'enabled' => false,
+            'file' => 'app.d.ts',
+            'path' => null,             // e.g. resource_path('types')
+            'namespaces' => ['App\\'],  // PHP roots resolved via PSR-4 file scan
+            'fallback_namespace' => 'App', // unmatched schemas; false = skip
+            'declaration' => 'type',    // 'type' | 'interface'
         ],
         IndexEmitter::class => [
             'enabled' => true,          // barrel exports (adds ./enums etc.)

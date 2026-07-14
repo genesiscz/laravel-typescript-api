@@ -34,7 +34,7 @@ class GenerateContext
     {
         $dir = $this->config['engines'][$engine::class]['dir'] ?? $engine->name();
 
-        return $dir === '' || $dir === null
+        return $dir === ''
             ? $this->outputPath
             : $this->outputPath.'/'.trim($dir, '/');
     }

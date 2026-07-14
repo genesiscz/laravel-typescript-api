@@ -7,3 +7,9 @@ parameters:
         - src
         - config
     tmpDir: build/phpstan
+    ignoreErrors:
+        # config/typescript-api.php IS a config file — larastan only
+        # whitelists the app's own config/ directory.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: config/typescript-api.php
