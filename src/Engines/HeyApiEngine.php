@@ -46,6 +46,10 @@ class HeyApiEngine implements Engine
             'input' => $context->artifactPath,
             'output' => [
                 'path' => $outputDir,
+                // hey-api wipes its output dir by default — with dir '' that
+                // is the SHARED output root (openapi.json, emitter files).
+                // Our manifest-based clean owns stale-file removal instead.
+                'clean' => false,
             ],
             'plugins' => $this->plugins($options),
         ], $options['passthrough'] ?? []);

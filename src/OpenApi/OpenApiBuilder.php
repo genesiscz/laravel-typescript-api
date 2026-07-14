@@ -14,27 +14,21 @@ use InvalidArgumentException;
  */
 class OpenApiBuilder
 {
-    public function __construct(
-        protected SchemaAppender $appender,
-    ) {}
-
     /**
+     * Collector classes only apply to the 'scramble' source — they are
+     * materialized DURING generation via a document transformer, so the
+     * run's own TypeTransformer (full extension chain) builds their schemas.
+     *
      * @param  list<class-string>  $extraSchemas
      * @return array<string, mixed>
      */
     public function build(array $config, array $extraSchemas = []): array
     {
-        $document = match (true) {
+        return match (true) {
             is_callable($config['source'] ?? null) => ($config['source'])(),
             ($config['source'] ?? 'scramble') === 'file' => $this->fromFile($config['file'] ?? null),
-            default => $this->fromScramble($config['scramble'] ?? []),
+            default => $this->fromScramble($config['scramble'] ?? [], $extraSchemas),
         };
-
-        if ($extraSchemas !== []) {
-            $document = $this->appender->append($document, $extraSchemas);
-        }
-
-        return $document;
     }
 
     protected function fromFile(?string $path): array
@@ -49,7 +43,11 @@ class OpenApiBuilder
     /** @var list<string> analysis errors collected during the last build */
     public array $errors = [];
 
-    protected function fromScramble(array $scrambleConfig): array
+    /** Guards repeat builds from stacking duplicate document transformers. */
+    protected static bool $transformerRegistered = false;
+
+    /** @param  list<class-string>  $extraSchemas */
+    protected function fromScramble(array $scrambleConfig, array $extraSchemas = []): array
     {
         $this->registerExtensions($scrambleConfig['extensions'] ?? []);
 
@@ -60,6 +58,14 @@ class OpenApiBuilder
         }
 
         $api = $scrambleConfig['api'] ?? 'default';
+
+        CollectedSchemasTransformer::$classes = $extraSchemas;
+
+        if ($extraSchemas !== [] && ! static::$transformerRegistered) {
+            Scramble::getGeneratorConfig($api)
+                ->withDocumentTransformers(CollectedSchemasTransformer::class);
+            static::$transformerRegistered = true;
+        }
 
         // Scramble 0.12: generate the document for the given API registration.
         // Collect per-route analysis exceptions instead of aborting — one
