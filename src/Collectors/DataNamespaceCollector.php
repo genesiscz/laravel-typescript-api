@@ -9,9 +9,11 @@ use Spatie\LaravelData\Data;
 use Symfony\Component\Finder\Finder;
 
 /**
- * Convention over annotation: every concrete Data subclass under the
- * configured namespaces is included — no #[TypeScript] attribute needed.
- * Direct port of ReservineBack's OwnCollector idea.
+ * Convention over annotation: every concrete Data subclass — and every
+ * backed PHP enum — under the configured namespaces is included, no
+ * #[TypeScript] attribute needed. Direct port of ReservineBack's
+ * OwnCollector idea; enums matter because frontends import them as values
+ * (enums.ts) even when no route DTO references them.
  */
 class DataNamespaceCollector implements Collector
 {
@@ -32,17 +34,33 @@ class DataNamespaceCollector implements Collector
                     ->beforeLast('.php')
                     ->replace('/', '\\');
 
-                if (in_array($class, $except, true) || ! class_exists($class)) {
+                if (in_array($class, $except, true)) {
+                    continue;
+                }
+
+                if (enum_exists($class)) {
+                    if ((new \ReflectionEnum($class))->getBackingType() !== null) {
+                        yield $class;
+                    }
+
+                    continue;
+                }
+
+                if (! class_exists($class)) {
                     continue;
                 }
 
                 $reflection = new ReflectionClass($class);
 
-                if ($reflection->isAbstract() || ! $reflection->isSubclassOf(Data::class)) {
+                if ($reflection->isAbstract()) {
                     continue;
                 }
 
-                yield $class;
+                // bensampo/laravel-enum class-based enums count as enums too.
+                if ($reflection->isSubclassOf(Data::class)
+                    || is_a($class, 'BenSampo\\Enum\\Enum', true)) {
+                    yield $class;
+                }
             }
         }
     }
