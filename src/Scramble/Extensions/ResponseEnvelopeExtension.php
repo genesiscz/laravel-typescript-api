@@ -9,6 +9,7 @@ use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\RouteInfo;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Spatie\LaravelData\Contracts\BaseData;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Types responses that scramble cannot infer — controllers returning an
@@ -111,7 +112,7 @@ class ResponseEnvelopeExtension extends OperationExtension
                 continue;
             }
 
-            foreach (\Symfony\Component\Finder\Finder::create()->files()->in($path)->name('*.php') as $file) {
+            foreach (Finder::create()->files()->in($path)->name('*.php') as $file) {
                 $class = $namespace.'\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
 
                 if (! class_exists($class) || ! is_a($class, BaseData::class, true)) {

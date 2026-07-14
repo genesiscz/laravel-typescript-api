@@ -3,9 +3,9 @@
 namespace Genesiscz\LaravelTypescriptApi\OpenApi;
 
 use Dedoc\Scramble\Contracts\DocumentTransformer;
+use Dedoc\Scramble\OpenApiContext;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\TypeTransformer;
-use Dedoc\Scramble\OpenApiContext;
 use Dedoc\Scramble\Support\Type\ObjectType;
 
 /**

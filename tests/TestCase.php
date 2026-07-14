@@ -2,6 +2,7 @@
 
 namespace Genesiscz\LaravelTypescriptApi\Tests;
 
+use Dedoc\Scramble\ScrambleServiceProvider;
 use Genesiscz\LaravelTypescriptApi\LaravelTypescriptApiServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -10,7 +11,7 @@ class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
-            \Dedoc\Scramble\ScrambleServiceProvider::class,
+            ScrambleServiceProvider::class,
             LaravelTypescriptApiServiceProvider::class,
         ];
     }

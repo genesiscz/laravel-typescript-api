@@ -2,9 +2,11 @@
 
 namespace Genesiscz\LaravelTypescriptApi;
 
+use Dedoc\Scramble\Scramble;
 use Genesiscz\LaravelTypescriptApi\Commands\DocsCommand;
 use Genesiscz\LaravelTypescriptApi\Commands\GenerateCommand;
 use Genesiscz\LaravelTypescriptApi\Docs\PreviewEngine;
+use Genesiscz\LaravelTypescriptApi\Support\BunRunner;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -28,8 +30,8 @@ class LaravelTypescriptApiServiceProvider extends PackageServiceProvider
         $this->app->singleton(LaravelTypescriptApiManager::class);
 
         $this->app->bind(
-            \Genesiscz\LaravelTypescriptApi\Support\BunRunner::class,
-            fn () => \Genesiscz\LaravelTypescriptApi\Support\BunRunner::fromConfig(config('typescript-api.runner', [])),
+            BunRunner::class,
+            fn () => BunRunner::fromConfig(config('typescript-api.runner', [])),
         );
 
         // Must happen in the register phase: scramble snapshots OPERATION
@@ -37,7 +39,7 @@ class LaravelTypescriptApiServiceProvider extends PackageServiceProvider
         // withOperationTransformers mapper runs immediately), so a
         // generate-time registerExtension() is too late for them —
         // TypeToSchema extensions resolve lazily and wouldn't care.
-        \Dedoc\Scramble\Scramble::registerExtensions(
+        Scramble::registerExtensions(
             config('typescript-api.openapi.scramble.extensions', []),
         );
     }
